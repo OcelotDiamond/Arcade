@@ -1,5 +1,11 @@
 :root {
-    --alt-bg: #d8d8d8;
+    --card-color: #e5e5e5;
+    --no-shadow: drop-shadow(0 0 0 #999);
+    --shadow: drop-shadow(0 0 5px #999);
+    --hover-shadow: drop-shadow(0 0 8px #999);
+    
+    --glow-width: 50px;
+    --glow-height: 50px;
 }
 
 * {
@@ -10,14 +16,51 @@ body {
     text-align: center;
 }
 
+.title-container {
+    margin: 0;
+    padding: 0;
+}
+
 h1.title {
-    background: var(--alt-bg);
+    background: var(--card-color);
     display: inline-block;
     margin: 10px;
     padding: 10px;
     border-radius: 26px;
     text-align: center;
     font-size: 24px;
+    cursor: default;
+    transition-duration: 350ms;
+    position: relative;
+    z-index: 0;
+}
+
+h1.title:hover {
+    background: rgba(229, 229, 229, 0);
+    backdrop-filter: blur(3px);
+    color: #fff;
+}
+
+.title-container::after {
+    position: absolute;
+	content: '';
+	width: var(--glow-width);
+	height: var(--glow-height);
+	background-image: linear-gradient(to right, #2d88f7, #ff82bd, #682b9c, #2d88f7);
+	animation: 3s bg-animation linear infinite;
+	background-size: 200%;
+	filter: blur(0px);
+	transform: translate(calc(-100% - 10px), 10px);
+	background-repeat: repeat;
+	z-index: -1;
+	border-radius: 26px;
+	opacity: 0;
+	transition-duration: 250ms;
+}
+
+.title-container:hover::after {
+	filter: blur(10px);
+	opacity: 1.5;
 }
 
 .title-bar {
@@ -28,12 +71,14 @@ h1.title {
     width: 34px;
     height: 34px;
     border-radius: 31px;
-    background: var(--alt-bg);
+    background: var(--card-color);
     float: right;
     margin: 10px;
     padding: 10px;
     text-align: center;
     transition-duration: 300ms;
+    filter: var(--no-shadow);
+    transition-duration: 250ms;
 }
 
 .search-button > input {
@@ -50,6 +95,10 @@ h1.title {
     opacity: 0;
 }
 
+.search-button:hover {
+    filter: var(--shadow);
+}
+
 .search-button > input:focus {
     width: 240px;
     transform: translate(-130px, -10px);
@@ -64,10 +113,12 @@ h1.title {
 
 .search-button:has(input:focus) {
     width: 240px;
+    filter: var(--hover-shadow) !important;
 }
 
 .search-button:has(input:not(:placeholder-shown)) {
     width: 240px;
+    filter: var(--hover-shadow) !important;
 }
 
 .search-button > svg {
@@ -101,7 +152,7 @@ h1.title {
 }
 
 .card {
-    background: var(--alt-bg);
+    background: var(--card-color);
     text-align: left;
     width: 200px;
     height: 332px;
@@ -109,12 +160,25 @@ h1.title {
     margin: 10px;
     display: inline-block;
     vertical-align: bottom;
+    filter: var(--shadow);
+    transition-duration: 250ms;
 }
 
-.card > a > img {
+.card:hover {
+    filter: var(--hover-shadow);
+}
+
+.card > img {
     border-radius: 10px 10px 0 0;
-    border-bottom: #fff 5px solid;
+    border-bottom: var(--card-color) 3px solid;
+    cursor: pointer;
     margin: 0;
+    min-width: 200px;
+    min-height: 200px;
+}
+
+.card > img.invalid {
+    cursor: default;
 }
 
 .card-text {
@@ -125,11 +189,21 @@ h1.title {
 .card-text > .header {
     font-weight: bold;
     font-size: 18px;
+    cursor: pointer;
+    color: #3388de;
+    text-decoration: underline;
+}
+
+.card-text > .header.invalid {
+    color: #ec273f;
+    text-decoration: line-through;
+    cursor: not-allowed;
 }
 
 .card-text > .text {
     font-size: 14px;
     margin-top: 20px;
+    cursor: default;
 }
 
 .no-results {
@@ -137,6 +211,65 @@ h1.title {
     color: #888;
     font-size: 32px;
     padding-top: 30vh;
+}
+
+.loading {
+    animation-direction: alternate;
+    animation-duration: 1s;
+    animation-iteration-count: infinite;
+    animation-name: loading-animation;
+    animation-timing-function: ease-in-out;
+    position: relative;
+    display: inline-block;
+}
+
+.loading.one {
+    animation-delay: 100ms;
+}
+
+.loading.two {
+    animation-delay: 200ms;
+}
+
+.loading.three {
+    animation-delay: 300ms;
+}
+
+.loading.four {
+    animation-delay: 400ms;
+}
+
+.loading.five {
+    animation-delay: 500ms;
+}
+
+.loading.six {
+    animation-delay: 600ms;
+}
+
+.loading.seven {
+    animation-delay: 700ms;
+}
+
+.loading.eight {
+    animation-delay: 800ms;
+}
+
+.loading.nine {
+    animation-delay: 900ms;
+}
+
+.loading.ten {
+    animation-delay: 1000ms;
+}
+
+.height-tester {
+    opacity: 0;
+    position: absolute;
+    text-align: left;
+    font-size: 14px;
+    pointer-events: none;
+    user-select: none;
 }
 
 .tags {
@@ -150,8 +283,10 @@ h1.title {
     padding: 3px;
     padding-left: 5px;
     padding-right: 5px;
+    margin-right: 3px;
     user-select: none;
     cursor: pointer;
+    display: inline-block;
 }
 
 .tag.red {
@@ -188,4 +323,22 @@ h1.title {
 
 .tag.black {
     background: #10121c;
+}
+
+@keyframes bg-animation {
+	0% {
+		background-position: 200% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
+@keyframes loading-animation {
+    0% {
+		transform: translateY(0em);
+	}
+	100% {
+		transform: translateY(-0.3em);
+	}
 }
