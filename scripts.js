@@ -5,7 +5,8 @@ const tagColorMap = {
     platformer: 'blue',
     infinite: 'purple',
     puzzle: 'orange',
-    '2d': 'yellow'
+    indev: 'red',
+    '2d': 'yellow',
 }
 
 const gameData = [
@@ -24,7 +25,8 @@ const gameData = [
         description: 'Under Construction',
         tags: [
             'Puzzle',
-            '2D'
+            '2D',
+            'Indev'
         ]
     }
 ];

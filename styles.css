@@ -2,7 +2,7 @@
     --card-color: #e5e5e5;
     --no-shadow: drop-shadow(0 0 0 #999);
     --shadow: drop-shadow(0 0 5px #999);
-    --hover-shadow: drop-shadow(0 0 8px #999);
+    --hover-shadow: drop-shadow(0 0 12px #999);
     
     --glow-width: 50px;
     --glow-height: 50px;
@@ -290,7 +290,7 @@ h1.title:hover {
 }
 
 .tag.red {
-    background: #ec273f;
+    background: #ed3e53;
 }
 
 .tag.orange {
