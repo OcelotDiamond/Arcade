@@ -471,7 +471,7 @@ function updateBreakingAchievements() { // This function is awful and should be 
 let pointsAchievementTest = localStorage.getItem('BASALT.achievements.points');
 
 if (!pointsAchievementTest) { // High Score carry over
-    localStorage.setItem('BASALT.achievements.points', highScore);
+    localStorage.setItem('BASALT.achievements.points', highScore * 10);
 }
 
 let layerCounter = -2;
