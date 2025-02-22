@@ -468,6 +468,12 @@ function updateBreakingAchievements() { // This function is awful and should be 
     }
 }
 
+let pointsAchievementTest = localStorage.getItem('BASALT.achievements.points');
+
+if (!pointsAchievementTest) { // High Score carry over
+    localStorage.setItem('BASALT.achievements.points', highScore);
+}
+
 let layerCounter = -2;
 const map = [];
 let mapHeight = 0; // Height of the top of the map data
