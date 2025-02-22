@@ -1,5 +1,6 @@
 const cardContainer = document.querySelector('.card-container');
 const noResults = document.querySelector('.no-results');
+const searchBar = document.querySelector('input');
 
 const tagColorMap = {
     platformer: 'blue',
@@ -18,6 +19,43 @@ const gameData = [
             'Infinite',
             '2D'
         ],
+        achievements: {
+            'depth': {
+                name: 'Deepest Depths',
+                type: 'generated_tiers',
+                tiers: [100, 250, 500, 1000],
+                fallback: 0, 
+                description: 'Travel $s meters down'
+            },
+            'bombs': {
+                name: 'Bombardier',
+                type: 'generated_tiers',
+                tiers: [10, 20, 30, 50],
+                fallback: 0, 
+                description: 'Detonate $s bombs'
+            },
+            'gems': {
+                name: 'Gem Collector',
+                type: 'generated_tiers',
+                tiers: [10, 25, 50, 100],
+                fallback: 0, 
+                description: 'Uncover $s gems'
+            },
+            'rocks': {
+                name: 'Quarryman',
+                type: 'generated_tiers',
+                tiers: [100, 250, 500, 1000],
+                fallback: 0, 
+                description: 'Shatter $s rocks'
+            },
+            'points': {
+                name: 'Perfectionist',
+                type: 'generated_tiers',
+                tiers: [10000, 25000, 50000, 100000],
+                fallback: 0, 
+                description: 'Get $s points'
+            }
+        },
         thumbnail: 'BASALT/thumbnail.png',
         reference: 'BASALT/basalt.html'
     }, {
@@ -31,8 +69,17 @@ const gameData = [
     }
 ];
 
+function getIndexFromGameName(game) {
+    for (let i = 0; i < gameData.length; i++) {
+        if (gameData[i].name === game) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 function getCardText(text) {
-    if (testText(text) <= 3) {
+    if (testText(text, 14, 168, 6) <= 3) {
         return text;
     }
     
@@ -40,7 +87,7 @@ function getCardText(text) {
     let totalString = '';
     
     for (let i = 0; i < segments.length; i++) {
-        if (testText(`${totalString} ${segments[i]} ...`) > 3) {
+        if (testText(`${totalString} ${segments[i]} ...`, 14, 168, 6) > 3) {
             return totalString + ' ...';
         }
         
@@ -50,18 +97,328 @@ function getCardText(text) {
     return text;
 }
 
-function testText(text) {
+function testText(text, fontSize, width, lineHeight) {
     const testingDiv = document.querySelector('.height-tester');
-    testingDiv.style.width = '168px';
-    testingDiv.style.lineHeight = '16px';
+    testingDiv.style.width = `${width}px`;
+    testingDiv.style.lineHeight = `${lineHeight}px`;
+    testingDiv.style.fontSize = `${fontSize}px`;
     testingDiv.innerHTML = text;
     
     return Math.round(testingDiv.offsetHeight / parseInt(testingDiv.style.lineHeight));
 }
 
+function addCommas(numericString) {
+    return numericString.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 function onCardClicked(index) {
-    if (!gameData[index].reference) {return}
-    document.location.href = gameData[index].reference;
+    setupOverlay(index);
+}
+
+function setupOverlay(gameIndex) {
+    const game = gameData[gameIndex];
+    
+    const overlayElement = document.querySelector('.overlay');
+    
+    const titleElement = document.querySelector('.overlay-title');
+    const descriptionElement = document.querySelector('.overlay-description');
+    const tagsElement = document.querySelector('.overlay-tags');
+    
+    titleElement.innerHTML = game.name;
+    descriptionElement.innerHTML = game.description;
+    
+    tagsElement.innerHTML = '';
+    
+    for (let i = 0; i < game.tags.length; i++) {
+        const tag = document.createElement('span');
+        tag.classList.add('tag');
+        tag.classList.add(tagColorMap[game.tags[i].toLowerCase()]);
+        tag.innerHTML = game.tags[i];
+        tag.onclick = () => {
+            onTagClicked(game.tags[i])
+            
+            overlayElement.classList.add('disabled');
+            document.body.classList.remove('disabled');
+        };
+        tagsElement.appendChild(tag);
+        
+        tagsElement.appendChild(document.createElement('br'));
+    }
+    
+    const galleryArrows = document.querySelector('.arrow-container');
+    
+    if (!game.gallery) {
+        galleryArrows.style.visibility = 'hidden';
+        galleryArrows.style.pointerEvents = 'none';
+    } else {
+        galleryArrows.style.visibility = 'visible';
+        galleryArrows.style.pointerEvents = 'auto';
+        //TODO: Impliment overlay galleries
+    }
+    
+    const playButton = document.querySelector('.play-button');
+    
+    if (game.reference) {
+        playButton.style.visibility = 'visible';
+        playButton.style.pointerEvents = 'auto';
+        
+        titleElement.href = game.reference;
+        playButton.href = game.reference;
+    } else {
+        playButton.style.visibility = 'hidden';
+        playButton.style.pointerEvents = 'none';
+        
+        titleElement.href = '';
+        playButton.href = '';
+        
+        playButton.onclick = () => {};
+    }
+    
+    const imageElement = document.querySelector('.overlay-card > .image');
+    
+    imageElement.style.backgroundImage = `url(${game.thumbnail ?? 'placeholder.png'})`;
+    
+    const overlayCard = document.querySelector('.overlay-card');
+    
+    overlayCard.onclick = e => e.stopPropagation();
+    
+    const achievements = document.querySelector('.achievements');
+
+    achievements.innerHTML = '';
+    achievements.scrollTop = 0;
+
+    if (game.achievements) {
+        generateAchievementsOverlay(game);
+    }
+
+    generatePlaytimeData(game, true, true);
+    
+    overlayElement.onclick = () => {
+        overlayElement.classList.add('disabled');
+        document.body.classList.remove('disabled');
+    };
+    
+    overlayElement.classList.remove('disabled');
+    document.body.classList.add('disabled');
+}
+
+function generateAchievementsOverlay(game) {
+    const achievements = Object.keys(game.achievements);
+    const achievementsElement = document.querySelector('.achievements');
+    
+    achievements.sort((a, b) => {
+        const achA = game.achievements[a].scoreData;
+        const achB = game.achievements[b].scoreData;
+    
+        if (achA.color < achB.color) {
+            return 1;
+        } else if (achA.color > achB.color) {
+            return -1;
+        } else if (achA.data < achB.data) {
+            return 1;
+        } else if (achA.data > achB.data) {
+            return -1;
+        } else {
+            return 0;
+        }
+    });
+    
+    achievementsElement.innerHTML = '';
+
+    for (let i = 0; i < achievements.length; i++) {
+        const current = game.achievements[achievements[i]];
+        const scoreData = current.scoreData;
+        
+        const achievement = document.createElement('div');
+        achievement.classList.add('achievement');
+        achievement.onclick = e => {
+            e.stopPropagation();
+        };
+        achievement.classList.add(`tier-${scoreData.color}`);
+        
+        const content = document.createElement('div');
+        content.classList.add('achievement-content');
+        achievement.appendChild(content);
+        
+        const title = document.createElement('div');
+        title.classList.add('title');
+        title.innerHTML = current.name;
+        content.appendChild(title);
+        
+        const description = document.createElement('div');
+        description.classList.add('description');
+        description.innerHTML = current.description.replace('$s', scoreData.replace);
+        content.appendChild(description);
+        
+        const progress = document.createElement('div');
+        progress.classList.add('progress');
+        progress.setAttribute('text-content', Math.floor(scoreData.data) + '%');
+        progress.style.setProperty('--percentage', scoreData.data + '%');
+        content.appendChild(progress);
+
+        achievementsElement.appendChild(achievement);
+    }
+}
+
+function generatePlaytimeData(game, doFirstUpdate, forceHTMLUpdate) {
+    const firstPlayedElement = document.querySelector('.first-played');
+    const playtimeElement = document.querySelector('.playtime');
+
+    let htmlUpdates = forceHTMLUpdate;
+
+    if (document.body.classList.contains('disabled')) {
+        const gameName = document.querySelector('.overlay-title').innerHTML;
+
+        if (game.name === gameName) {
+            htmlUpdates = true;
+        }
+    }
+
+    let playtime = localStorage.getItem(game.name + '.data.time_played');
+    let first = localStorage.getItem(game.name + '.data.first_played');
+    
+    if (playtime) {
+        playtime = parseInt(playtime);
+
+        if (htmlUpdates) {
+            const seconds = playtime / 1000;
+            const minutes = seconds / 60;
+            const hours = minutes / 60;
+            
+            if (seconds < 100) {
+                playtimeElement.innerHTML = `Playtime <br> ${seconds.toFixed(2)} seconds`;
+            } else if (minutes < 100) {
+                playtimeElement.innerHTML = `Playtime <br> ${minutes.toFixed(2)} minutes`;
+            } else if (hours < 100) {
+                playtimeElement.innerHTML = `Playtime <br> ${hours.toFixed(2)} hours`;
+            } else if (hours < 1000) {
+                playtimeElement.innerHTML = `Playtime <br> ${hours.toFixed(1)} hours`;
+            } else {
+                playtimeElement.innerHTML = `Playtime <br> ${Math.floor(hours)} hours`;
+            }
+            
+            let titleString = '';
+            
+            titleString += `${Math.floor(hours)}:`;
+            titleString += `${Math.floor(minutes % 60)}:`.padStart(3, '0');
+            titleString += `${Math.floor(seconds % 60)}:`.padStart(3, '0');
+            titleString += `${playtime % 1000}`.padStart(4, '0');
+            
+            playtimeElement.setAttribute('title', titleString);
+            playtimeElement.style.cursor = 'help';
+        }
+    } else {
+        if (htmlUpdates) {
+            playtimeElement.innerHTML = 'Never played';
+            playtimeElement.removeAttribute('title');
+            playtimeElement.style.cursor = 'auto';
+        }
+        playtime = 0;
+    }
+    
+    if (!game.playData) {
+        game.playData = {};
+    }
+    
+    game.playData.timePlayed = playtime;
+    
+    if (doFirstUpdate || firstPlayedElement.style.display === 'none') {
+        if (first) {
+            first = parseInt(first);
+            if (htmlUpdates) {
+                const dateObj = new Date(first);
+                firstPlayedElement.style.display = 'block';
+                firstPlayedElement.setAttribute('title', new Intl.DateTimeFormat(navigator.language, {
+                    dateStyle: 'full',
+                    timeStyle: 'long'
+                }).format(dateObj));
+                firstPlayedElement.style.cursor = 'help';
+                firstPlayedElement.innerHTML = `First played ${new Intl.DateTimeFormat(navigator.language).format(dateObj)}`;
+            }
+        } else {
+            first = -1;
+            if (htmlUpdates) {
+                firstPlayedElement.style.display = 'none';
+            }
+        }
+        
+        game.playData.firstPlayed = first;
+    }
+}
+
+window.onstorage = () => {
+    pregenerateData(false);
+
+    if (document.body.classList.contains('disabled')) {
+        const gameName = document.querySelector('.overlay-title').innerHTML;
+        
+        for (let i = 0; i < gameData.length; i++) {
+            if (gameData[i].name === gameName && gameData[i].achievements) {
+                generateAchievementsOverlay(gameData[i]);
+                return;
+            }
+        }
+    }
+}
+
+function pregenerateData(initial) {
+    for (let i = 0; i < gameData.length; i++) {
+        generatePlaytimeData(gameData[i], initial, false);
+
+        if (!gameData[i].achievements) {
+            continue;
+        }
+    
+        const keys = Object.keys(gameData[i].achievements);
+        for (let j = 0; j < keys.length; j++) {
+            getAchievementScoreData(gameData[i], keys[j]);
+        }
+    }
+}
+
+function getAchievementScoreData(game, id) {
+    const achievement = game.achievements[id];
+    let score = localStorage.getItem(game.name + '.achievements.' + id);
+    
+    if (score) {
+        score = parseInt(score);
+    } else {
+        score = achievement.fallback;
+    }
+    
+    const colorCount = 5;
+    
+    switch (achievement.type) {
+        case 'generated_tiers':
+            let index = 0;
+            for (let i = 0; i < achievement.tiers.length; i++) {
+                if (score < achievement.tiers[i]) {
+                    index = i;
+                    break;
+                } else if (i === achievement.tiers.length - 1) {
+                    index = achievement.tiers.length;
+                }
+            }
+            
+            const max = achievement.tiers[Math.min(index, achievement.tiers.length - 1)];
+            const current = Math.min(score, achievement.tiers[achievement.tiers.length - 1]);
+            
+            const progress = current < max ? (current * 100 / max) : 100;
+            
+            achievement.scoreData = {
+                color: index === 0 ? 0 : Math.max(colorCount - achievement.tiers.length, 0) + index,
+                data: progress,
+                replace: `${max}`
+            }
+            break;
+        default:
+            console.error('Unexpected achievement type encountered')
+            achievement.scoreData = {
+                color: 0,
+                data: 0,
+                replace: ''
+            }
+    }
 }
 
 let thumbnailsLoaded = false;
@@ -79,6 +436,24 @@ function onThumbnailsLoaded() {
     thumbnailsLoaded = true;
 }
 
+function onTagClicked(tag) {
+    searchBar.focus();
+    searchBar.select();
+    
+    const tagString = `tag:${tag.toLowerCase()}`;
+    if (searchBar.value.length >= tagString.length && searchBar.value.includes(tagString)) {
+        return;
+    }
+    if (searchBar.value.replace(' ', '').length === 0) {
+        searchBar.value = tagString + ' ';
+        searchBar.oninput();
+        return;
+    }
+    searchBar.value = `${tagString} ${searchBar.value}`;
+    
+    searchBar.oninput();
+}
+
 function genCards() {
     let imgLoadingTicker = gameData.length;
 
@@ -86,6 +461,8 @@ function genCards() {
         const card = document.createElement('div');
         card.classList.add('card');
         card.style.display = 'none';
+        card.id = gameData[i].name;
+        card.setAttribute('card-index', i);
         cardContainer.insertBefore(card, noResults);
         
         const thumbnail = document.createElement('img');
@@ -132,6 +509,7 @@ function genCards() {
         
         if (croppedCardText !== gameData[i].description) {
             body.setAttribute('title', gameData[i].description);
+            body.style.cursor = 'help';
         }
         
         text.appendChild(body);
@@ -147,6 +525,7 @@ function genCards() {
             tag.classList.add('tag');
             tag.classList.add(tagColorMap[gameData[i].tags[j].toLowerCase()]);
             tag.innerHTML = gameData[i].tags[j];
+            tag.onclick = () => onTagClicked(gameData[i].tags[j]);
             tags.appendChild(tag);
         }
     }
@@ -160,6 +539,7 @@ function genCards() {
     }, 5000);
 }
 
+pregenerateData(true);
 genCards();
 
 function setupGlow() {
@@ -172,7 +552,6 @@ function setupGlow() {
 
 setupGlow();
 
-const searchBar = document.querySelector('input');
 const cards = document.querySelectorAll('.card');
 
 function getTitle(card) {
@@ -213,41 +592,13 @@ for (let i = 0; i < gameData.length; i++) {
     }
 }
 
-for (let i = 0; i < cards.length; i++) {
-    for (const cardText of cards[i].children) {
-        if (cardText.className === 'card-text') {
-            for (const tags of cardText.children) {
-                if (tags.className === 'tags') {
-                    for (const tag of tags.children) {
-                        tag.onclick = () => {
-                            const tagString = `tag:${tag.innerHTML.toLowerCase()}`;
-                            if (searchBar.value.length >= tagString.length
-                                && searchBar.value.includes(tagString)) {
-                                return;
-                            }
-                            if (searchBar.value.replace(' ', '').length === 0) {
-                                searchBar.value = tagString;
-                                searchBar.oninput();
-                                return;
-                            }
-                            searchBar.value = `${tagString} ${searchBar.value}`;
-                            
-                            searchBar.oninput();
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 searchBar.oninput = () => {
     const tokens = searchBar.value.toLowerCase().split(' ');
-    
+
     for (const card of cards) {
         card.style.display = 'inline-block';
     }
-    
+
     for (const card of cards) {
         const title = getTitle(card);
         for (let i = 0; i < tokens.length; i++) {
@@ -296,8 +647,13 @@ searchBar.oninput = () => {
     
     if (!oneShown) {
         noResults.style.display = 'inline-block';
-        console.log('here')
     } else {
         noResults.style.display = 'none';
     }
 }
+
+window.onresize = () => {
+    
+}
+
+window.onresize();

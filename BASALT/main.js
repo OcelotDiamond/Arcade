@@ -33,8 +33,7 @@ window.onkeyup = keyUp;
 window.onblur = onBlur;
 
 function drawRect(ctx, x, y, w, h) {
-    ctx.fillRect(x*displayMult, y*displayMult,
-        w*displayMult, h*displayMult);
+    ctx.fillRect(x*displayMult, y*displayMult, w*displayMult, h*displayMult);
 }
 
 function drawPoly(ctx, offX, offY, points) {
@@ -53,7 +52,7 @@ function drawPoly(ctx, offX, offY, points) {
 
 function setColor(ctx, index) {
     ctx.fillStyle = COLORS[index];
-    if (doGlow) {
+    if (currentShader === 1) {
         ctx.shadowBlur = displayMult * 2;
         ctx.shadowColor = COLORS[index];
     } else {
@@ -131,14 +130,24 @@ const maps = [
 let COLORS;
 
 window.onresize = () => {
-    displayMult = Math.floor(Math.min(
-    window.innerWidth, window.innerHeight) / 128);
+    if (currentShader === 2) {
+        displayMult = 1.5;
+
+        canvas.width = 192;
+        canvas.height = 192;
+
+        const trueMult = Math.floor(Math.min(window.innerWidth, window.innerHeight) / 128);
+
+        canvas.style.width = `${128 * trueMult}px`;
+        canvas.style.height = `${128 * trueMult}px`;
+        return;
+    }
+
+    displayMult = Math.floor(Math.min(window.innerWidth, window.innerHeight) / 128);
 
     canvas.width = 128 * displayMult;
     canvas.height = 128 * displayMult;
 }
-
-window.onresize();
 
 let highScore = parseInt(localStorage.getItem('BASALT.variables.highScore'));
 
@@ -260,6 +269,9 @@ function doPlayerLogic() {
                                 false
                             ]);
                         }
+
+                        updateBreakingAchievements();
+
                         map[tileY][i] = 0;
                     }
                     if (preexistingBomb === -1) {
@@ -292,6 +304,14 @@ function doPlayerLogic() {
                 const sqCombinedRadius = 0.25*pWidth*pWidth+5*pWidth+25; // (pWidth/2+5)^2
                 if (differenceX*differenceX + differenceY*differenceY < sqCombinedRadius) { // Circle colliders
                     isDead = true;
+                    let prevValue = localStorage.getItem('BASALT.data.time_played');
+                    if (!prevValue) {
+                        prevValue = 0;
+                    } else {
+                        prevValue = parseInt(prevValue);
+                    }
+
+                    localStorage.setItem('BASALT.data.time_played', prevValue + Date.now() - lastPlaytimeMarker);
                     for (let i = 0; i < 12; i++) {
                         const xRandomFactor = Math.random() * pWidth;
                         particles.push([
@@ -374,7 +394,23 @@ function doPlayerLogic() {
     xPos += dX;
     yPos += dY;
     
-    maxDepth = Math.max(yPos, maxDepth);
+    if (maxDepth < yPos) {
+        maxDepth = yPos;
+
+        let depthAchievement = localStorage.getItem('BASALT.achievements.depth');
+
+        if (!depthAchievement) {
+            depthAchievement = 0;
+        } else {
+            depthAchievement = parseInt(depthAchievement);
+        }
+
+        const transformedDepth = Math.round(maxDepth / 10 - 48);
+
+        if (transformedDepth > depthAchievement) {
+            localStorage.setItem('BASALT.achievements.depth', transformedDepth);
+        }
+    }
     
     if (xPos > 128 - 16 - pWidth) {
         dX = 0;
@@ -385,10 +421,57 @@ function doPlayerLogic() {
     }
 }
 
+function updateBreakingAchievements() { // This function is awful and should be fixed later
+    let rocksAchievement = localStorage.getItem('BASALT.achievements.rocks');
+    let gemsAchievement = localStorage.getItem('BASALT.achievements.gems');
+    let bombsAchievement = localStorage.getItem('BASALT.achievements.bombs');
+    let pointsAchievement = localStorage.getItem('BASALT.achievements.points');
+
+    if (!rocksAchievement) {
+        rocksAchievement = 0;
+    } else {
+        rocksAchievement = parseInt(rocksAchievement);
+    }
+
+    if (!gemsAchievement) {
+        gemsAchievement = 0;
+    } else {
+        gemsAchievement = parseInt(gemsAchievement);
+    }
+
+    if (!bombsAchievement) {
+        bombsAchievement = 0;
+    } else {
+        bombsAchievement = parseInt(bombsAchievement);
+    }
+
+    if (!pointsAchievement) {
+        pointsAchievement = 0;
+    } else {
+        pointsAchievement = parseInt(pointsAchievement);
+    }
+
+    if (rocksDestroyed > rocksAchievement) {
+        localStorage.setItem('BASALT.achievements.rocks', rocksDestroyed);
+    }
+
+    if (gemsDestroyed > gemsAchievement) {
+        localStorage.setItem('BASALT.achievements.gems', gemsDestroyed);
+    }
+
+    if (bombsDestroyed > bombsAchievement) {
+        localStorage.setItem('BASALT.achievements.bombs', bombsDestroyed);
+    }
+
+    if (rocksDestroyed * 20 + gemsDestroyed * 500 > pointsAchievement) {
+        localStorage.setItem('BASALT.achievements.points', rocksDestroyed * 20 + gemsDestroyed * 500);
+    }
+}
+
 let layerCounter = -2;
 const map = [];
 let mapHeight = 0; // Height of the top of the map data
-const mapMaxLength = 8*16;
+const mapMaxLength = 128;
 
 const preGenFloorCount = 16;
 
@@ -491,6 +574,8 @@ function explodeBomb(index) {
             }
         }
     }
+
+    updateBreakingAchievements();
 
     // idk why it's +51, I just plugged in random numbers until it looked right
     particles.push([bombX*16+24, bombY*16+mapHeight+51, 60, 1]);
@@ -635,7 +720,7 @@ function drawDeathScreen(ctx, timer) {
         if (timer < second * 5.5) {
             distanceText = '0m';
         } else {
-            const distance = Math.round(maxDepth * Math.min((timer - second * 5.5)/second, 1) / 10);
+            const distance = Math.round((maxDepth - 480) * Math.min((timer - second * 5.5)/second, 1) / 10);
             distanceText = addCommas(distance.toFixed(0)) + 'm';
         }
         const distanceWidth = getTextSize(ctx, distanceText, 6, true).width;
@@ -780,7 +865,7 @@ let tipFadeTimer = 0;
 let codeCompleted = parseInt(localStorage.getItem('BASALT.variables.codeCompleted'));
 
 let currentPalette = 0;
-let doGlow = false;
+let currentShader = 0;
 
 if (!isNaN(codeCompleted) && codeCompleted !== null) {
     currentCodeIndex = sequence.length;
@@ -789,7 +874,7 @@ if (!isNaN(codeCompleted) && codeCompleted !== null) {
     let savedPaletteIndex = parseInt(localStorage.getItem('BASALT.variables.paletteIndex'));
     if (!isNaN(savedPaletteIndex) && savedPaletteIndex !== null) {
         currentPalette = savedPaletteIndex % palettes.length;
-        doGlow = savedPaletteIndex >= palettes.length;
+        currentShader = Math.floor(savedPaletteIndex / palettes.length);
     }
 }
 
@@ -805,7 +890,7 @@ function setPalette(index) {
     COLORS = palettes[index];
     document.documentElement.style.setProperty('--background', COLORS[0]);
 
-    localStorage.setItem('BASALT.variables.paletteIndex', index + (doGlow ? palettes.length : 0));
+    localStorage.setItem('BASALT.variables.paletteIndex', index + currentShader * palettes.length);
 }
 
 function titleScreen(ctx) {
@@ -826,8 +911,9 @@ function titleScreen(ctx) {
     if ((keys.w || keys.arrowup) && !uKeyDown) {
         uKeyDown = true;
         if (currentCodeIndex === sequence.length) {
-            doGlow = !doGlow;
-            localStorage.setItem('BASALT.variables.paletteIndex', currentPalette + (doGlow ? palettes.length : 0));
+            currentShader = currentShader + 1 > 2 ? 0 : currentShader + 1;
+            window.onresize();
+            localStorage.setItem('BASALT.variables.paletteIndex', currentPalette + currentShader * palettes.length);
         }
     } else if (!(keys.w || keys.arrowup) && uKeyDown) {
         uKeyDown = false;
@@ -884,8 +970,8 @@ function titleScreen(ctx) {
         tipFadeTimer = Math.min(tipFadeTimer + 1, 60);
         ctx.globalAlpha = globalOpacity * (tipFadeTimer / 60);
         
-        const glowWidth = getTextSize(ctx, 'Press \u{2B9D}/W to enable/disable glowing', 4, true).width;
-        drawText(ctx, 64 - glowWidth * 0.5, 100, 'Press \u{2B9D}/W to enable/disable glowing', 4, true);
+        const glowWidth = getTextSize(ctx, 'Press \u{2B9D}/W to swap shaders', 4, true).width;
+        drawText(ctx, 64 - glowWidth * 0.5, 100, 'Press \u{2B9D}/W to swap shaders', 4, true);
 
         const palletteWidth = getTextSize(ctx,
             'Press \u{2B9C}\u{200A}/\u{200A}A and \u{2B9E}\u{200A}/\u{200A}D to cycle palettes', 4, true).width;
@@ -964,6 +1050,9 @@ let restartTimer = 0;
 let sKeyDown = false;
 let paused = false;
 
+let playTimeUpdateCounter = 10;
+let lastPlaytimeMarker = 0;
+
 let timeAtPauseStart = 0;
 
 function update(ctx, time) {
@@ -986,7 +1075,9 @@ function update(ctx, time) {
             if (paused) {
                 timeAtPauseStart = Date.now();
             } else {
-                playTime += (Date.now() - timeAtPauseStart);
+                const change = Date.now() - timeAtPauseStart;
+                playTime += change;
+                lastPlaytimeMarker += change;
             }
         }
     } else if (!(keys.s || keys.arrowdown) && sKeyDown) {
@@ -1016,6 +1107,24 @@ function update(ctx, time) {
     }
     
     if (!paused) {
+        if (!isDead) {
+            if (playTimeUpdateCounter <= 0) {
+                playTimeUpdateCounter = 10;
+
+                let prevValue = localStorage.getItem('BASALT.data.time_played');
+                if (!prevValue) {
+                    prevValue = 0;
+                } else {
+                    prevValue = parseInt(prevValue);
+                }
+
+                localStorage.setItem('BASALT.data.time_played', prevValue + Date.now() - lastPlaytimeMarker);
+                
+                lastPlaytimeMarker = Date.now();
+            } else {
+                playTimeUpdateCounter--;
+            }
+        }
         doPlayerLogic();
     }
     
@@ -1105,6 +1214,13 @@ function update(ctx, time) {
 
 function initNewGame(ctx) {
     playTime = Date.now();
+    lastPlaytimeMarker = playTime;
+
+    if (!localStorage.getItem('BASALT.data.first_played')) {
+        localStorage.setItem('BASALT.data.first_played', Date.now());
+    }
+    
+    playTimeUpdateCounter = 30;
     
     restartTimer = 0;
     
@@ -1159,6 +1275,7 @@ function initNewGame(ctx) {
     update(ctx, 0);
 }
 
+window.onresize();
 titleScreen(ctx);
 
 function drawPlayer(ctx) {
@@ -1166,13 +1283,11 @@ function drawPlayer(ctx) {
     drawRect(ctx, xPos, (128-pHeight)/2, pWidth, pHeight);
 }
 
-const lineGlitchOffset = 0.1;
-
 function drawTile(ctx, x, vo, tx, ty) {
     const cX = x*16 + 16;
     const cY = vo;
     setColor(ctx, 1);
-    drawRect(ctx, cX, cY, 16, 16 + lineGlitchOffset);
+    drawRect(ctx, cX, cY, 16, 16 + 1 / displayMult);
 }
 
 function drawBomb(ctx, x, vo, tx, ty) {
@@ -1206,7 +1321,7 @@ function drawGem(ctx, x, vo, tx, ty) {
     const cX = x*16 + 16;
     const cY = vo;
     setColor(ctx, 1);
-    drawRect(ctx, cX, cY, 16, 16 + lineGlitchOffset);
+    drawRect(ctx, cX, cY, 16, 16 + 1 / displayMult);
     setColor(ctx, 2);
     let arr = [];
     for (let i = 0; i < 3; i++) {
