@@ -119,12 +119,15 @@ function setupOverlay(gameIndex) {
     const game = gameData[gameIndex];
     
     const overlayElement = document.querySelector('.overlay');
-    
-    const titleElement = document.querySelector('.overlay-title');
+
+    const titlePredecessor = document.querySelector('.overlay-title');
+    if (titlePredecessor) {
+        titlePredecessor.remove()
+    }
+
     const descriptionElement = document.querySelector('.overlay-description');
     const tagsElement = document.querySelector('.overlay-tags');
-    
-    titleElement.innerHTML = game.name;
+
     descriptionElement.innerHTML = game.description;
     
     tagsElement.innerHTML = '';
@@ -157,10 +160,13 @@ function setupOverlay(gameIndex) {
     }
     
     const playButton = document.querySelector('.play-button');
+    let titleElement;
     
     if (game.reference) {
         playButton.style.visibility = 'visible';
         playButton.style.pointerEvents = 'auto';
+
+        titleElement = document.createElement('a');
         
         titleElement.href = game.reference;
         playButton.href = game.reference;
@@ -168,11 +174,15 @@ function setupOverlay(gameIndex) {
         playButton.style.visibility = 'hidden';
         playButton.style.pointerEvents = 'none';
         
-        titleElement.href = '';
         playButton.href = '';
-        
-        playButton.onclick = () => {};
+
+        titleElement = document.createElement('span');
     }
+
+    titleElement.classList.add('overlay-title');
+    titleElement.innerHTML = game.name;
+
+    document.querySelector('.pre-align').insertBefore(titleElement, descriptionElement);
     
     const imageElement = document.querySelector('.overlay-card > .image');
     
@@ -266,7 +276,7 @@ function generatePlaytimeData(game, doFirstUpdate, forceHTMLUpdate) {
 
     let htmlUpdates = forceHTMLUpdate;
 
-    if (document.body.classList.contains('disabled')) {
+    if (document.body.classList.contains('disabled') && document.querySelector('.overlay-title')) {
         const gameName = document.querySelector('.overlay-title').innerHTML;
 
         if (game.name === gameName) {
@@ -327,13 +337,13 @@ function generatePlaytimeData(game, doFirstUpdate, forceHTMLUpdate) {
             first = parseInt(first);
             if (htmlUpdates) {
                 const dateObj = new Date(first);
-                firstPlayedElement.style.display = 'block';
                 firstPlayedElement.setAttribute('title', new Intl.DateTimeFormat(navigator.language, {
                     dateStyle: 'full',
                     timeStyle: 'long'
                 }).format(dateObj));
                 firstPlayedElement.style.cursor = 'help';
                 firstPlayedElement.innerHTML = `First played ${new Intl.DateTimeFormat(navigator.language).format(dateObj)}`;
+                firstPlayedElement.style.display = 'block';
             }
         } else {
             first = -1;
