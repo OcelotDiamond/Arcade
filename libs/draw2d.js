@@ -32,7 +32,7 @@ class Draw2D {
         this.canvas = options.canvas ?? document.querySelector('canvas');
         this.ctx = this.canvas.getContext('2d');
 
-        this.autoResize = options.autoResize ?? false;
+        this.autoResize = options.autoResize ?? true;
         this.steppedResize = options.steppedResize ?? true;
         this.xResolution = (options.xResolution ?? options.resolution) ?? 128;
         this.yResolution = (options.yResolution ?? options.resolution) ?? 128;
@@ -40,17 +40,21 @@ class Draw2D {
         this.container = options.container ?? document.body;
 
         if (this.autoResize) {
-            this.canvas.onresize = this.onResize;
+            this.container.onresize = this.onResize.bind(this);
         }
+        
+        this.onResize();
     }
 
     static onResize() {
+        const bcRect = this.container.getBoundingClientRect();
+        
         const simpleMultiplier = Math.min(
-            this.container.clientWidth / this.xResolution,
-            this.container.clientHeight / this.yResolution
+            bcRect.width / this.xResolution,
+            bcRect.height / this.yResolution
         );
 
-        this.displayMultiplier = steppedResize ? Math.floor(simpleMultiplier): simpleMultiplier;
+        this.displayMultiplier = this.steppedResize ? Math.floor(simpleMultiplier): simpleMultiplier;
 
         this.canvas.width = Math.round(this.displayMultiplier * this.xResolution);
         this.canvas.height = Math.round(this.displayMultiplier * this.yResolution);
@@ -97,7 +101,12 @@ class Draw2D {
      * @param {number} h
      */
     static rect(x, y, w, h) {
-        this.ctx.fillRect(x, y, w, h);
+        this.ctx.fillRect(
+            x * this.displayMultiplier,
+            y * this.displayMultiplier,
+            w * this.displayMultiplier,
+            h * this.displayMultiplier
+        );
     }
 
     /**
@@ -191,7 +200,12 @@ class Draw2D {
      * @param {number} [h=undefined] 
      */
     static image(image, x, y, w = undefined, h = undefined) {
-        this.ctx.drawImage(image, x, y, w, h);
+        this.ctx.drawImage(image,
+            x * this.displayMultiplier,
+            y * this.displayMultiplier,
+            w * this.displayMultiplier,
+            h * this.displayMultiplier
+        );
     }
 
     /**
@@ -206,7 +220,12 @@ class Draw2D {
      * @param {number} cropH - The height of the cropped region
      */
     static croppedImage(image, x, y, w, h, cropX, cropY, cropW, cropH) {
-        this.ctx.drawImage(image, cropX, cropY, cropW, cropH, x, y, w, h);
+        this.ctx.drawImage(image, cropX, cropY, cropW, cropH,
+            x * this.displayMultiplier,
+            y * this.displayMultiplier,
+            w * this.displayMultiplier,
+            h * this.displayMultiplier
+        );
     }
 
     static font = 'Arial';
