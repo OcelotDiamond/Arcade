@@ -326,7 +326,7 @@ function generateWallDrawCalls(drawCalls) {
     for (let y = 0; y < levelHeight + 2; y++) {
         for (let x = 0; x < levelWidth + 2; x++) {
             if (mapCoverage[y * (levelWidth + 2) + x]) {
-                drawCalls.push(x - 1, y - 1, 1, 1)
+                drawCalls.push(x - 1, y - 1, 1, 1);
             }
         }
     }
@@ -379,8 +379,10 @@ function update(time) {
         }
     }
 
-    if (moveBoxes(playerX, playerY, dx, dy)) { // moveBoxes doubles as a general collision check
+    if (moveBoxes(playerX, playerY, dx, 0)) { // moveBoxes doubles as a general collision check
         playerX += dx;
+    }
+    if (moveBoxes(playerX, playerY, 0, dy)) {
         playerY += dy;
     }
 
@@ -405,13 +407,13 @@ function drawCycle(ctx, time) {
 
     drawWalls(ctx, levelDrawCalls);
 
-    ctx.fillStyle = '#C2C2C6';
+    ctx.fillStyle = '#1E1E25';
     //ctx.fillStyle = '#FF0000';
     drawRect(ctx, 0, 0, levelXOffset - levelScale * 0.5, 128);
-    drawRect(ctx, 0, 0, 128, levelYOffset - levelScale * 0.5);
+    drawRect(ctx, 0, 0, 128, levelYOffset - levelScale * 0.75);
 
     drawRect(ctx, levelXOffset + (levelWidth + 0.5) * levelScale, 0, 128 - levelXOffset - (levelWidth + 0.5) * levelScale, 128);
-    drawRect(ctx, 0, levelYOffset + (levelHeight + 0.5) * levelScale, 128, 128 - levelYOffset - (levelHeight + 0.5) * levelScale);
+    drawRect(ctx, 0, levelYOffset + (levelHeight + 0.25) * levelScale, 128, 128 - levelYOffset - (levelHeight + 0.25) * levelScale);
 
     drawDebug(ctx, debugCalls);
 
@@ -449,31 +451,31 @@ function drawEnd(ctx, x, y) {
 }
 
 function drawWalls(ctx, drawCalls) {
-    ctx.fillStyle = '#1E1E25';
+    ctx.fillStyle = '#C2C2C6';
     for (let i = 0; i < drawCalls.length; i+=4) {
         drawRect(ctx,
             drawCalls[i]   * levelScale + levelXOffset,
-            drawCalls[i+1] * levelScale + levelYOffset,
+            (drawCalls[i+1]) * levelScale + levelYOffset,
             drawCalls[i+2] * levelScale,
-            drawCalls[i+3] * levelScale);
+            (drawCalls[i+3] + 0.3) * levelScale);
     }
 
     ctx.fillStyle = '#787887';
     for (let i = 0; i < drawCalls.length; i+=4) {
         drawRect(ctx,
             (drawCalls[i]   + 0.1) * levelScale + levelXOffset,
-            (drawCalls[i+1] + 0.1) * levelScale + levelYOffset,
+            (drawCalls[i+1] + 0.2/3) * levelScale + levelYOffset,
             (drawCalls[i+2] - 0.2) * levelScale,
-            (drawCalls[i+3] - 0.2) * levelScale);
+            (drawCalls[i+3] - 1.6/3) * levelScale);
     }
 
-    ctx.fillStyle = '#C2C2C6';
+    ctx.fillStyle = '#1E1E25';
     for (let i = 0; i < drawCalls.length; i+=4) {
         drawRect(ctx,
             (drawCalls[i]   + 0.2) * levelScale + levelXOffset,
-            (drawCalls[i+1] + 0.2) * levelScale + levelYOffset,
+            (drawCalls[i+1] + 0.4/3) * levelScale + levelYOffset,
             (drawCalls[i+2] - 0.4) * levelScale,
-            (drawCalls[i+3] - 0.4) * levelScale);
+            (drawCalls[i+3] - 2/3) * levelScale);
     }
 }
 
@@ -489,7 +491,7 @@ function drawDebug(ctx, drawCalls) {
 }
 
 function drawBox(ctx, x, y, index) {
-    ctx.fillStyle = '#1E1E25';
+    ctx.fillStyle = '#C2C2C6';
     drawRect(ctx,
         (x + 0.1) * levelScale + levelXOffset,
         (y + 0.1) * levelScale + levelYOffset,
@@ -513,7 +515,7 @@ function drawBox(ctx, x, y, index) {
         [size-thickness, -size],
         [size, -size],
         [size, thickness-size]
-    ]
+    ];
 
     ctx.fillStyle = '#C2C2C6';
     drawPoly(ctx, (x + 0.5) * levelScale + levelXOffset, (y + 0.5) * levelScale + levelYOffset, arr);
